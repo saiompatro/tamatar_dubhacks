@@ -117,6 +117,10 @@ curl http://localhost:3000/api/health
 # {"ok":true}
 ```
 
+### iPad app
+
+`ios/` holds a native iPad app that wraps the site and adds Apple Pencil double-tap, squeeze, hover, barrel roll and haptics. To install it with a free Apple ID, run `npm run dev:ipad` and follow [ios/README.md](ios/README.md).
+
 Available project checks:
 
 ```bash

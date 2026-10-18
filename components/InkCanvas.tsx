@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { closedLoop, isCurvingBack } from "@/lib/circle";
 import { BOARD_H, BOARD_W, distToStroke, newId, rulerEnd, savedStrokePath, strokeColor, strokeOpacity, strokePath } from "@/lib/ink";
+import { pencilHaptic, pencilPose, pencilPrefs } from "@/lib/native";
 import type { Ink } from "@/lib/useInk";
 import type { DrawingTool, Point, Stroke } from "@/lib/types";
 
@@ -32,11 +33,33 @@ type Props = {
 
 const ERASE_RADIUS = 16;
 
+type Sample = Pick<PointerEvent, "clientX" | "clientY" | "pointerType" | "pressure" | "tiltX" | "tiltY"> & {
+  altitudeAngle?: number;
+  azimuthAngle?: number;
+};
+
+/** Pencil angle above the screen (π/2 = upright). Older Safari only reports tiltX/tiltY. */
+function altitudeOf(ev: Sample) {
+  if (typeof ev.altitudeAngle === "number") return ev.altitudeAngle;
+  const r = Math.hypot(Math.tan((ev.tiltX * Math.PI) / 180), Math.tan((ev.tiltY * Math.PI) / 180));
+  return r ? Math.atan(1 / r) : Math.PI / 2;
+}
+
+/** Direction the Pencil leans, in screen radians. */
+function azimuthOf(ev: Sample) {
+  if (typeof ev.azimuthAngle === "number") return ev.azimuthAngle;
+  return Math.atan2(Math.tan((ev.tiltY * Math.PI) / 180), Math.tan((ev.tiltX * Math.PI) / 180));
+}
+
+/** In the iPad app, "Only Draw with Apple Pencil" turned off in Settings lets one finger draw. */
+const fingerDraws = () => pencilPrefs()?.prefersPencilOnlyDrawing === false;
+
 /**
  * The writing surface (ui_planning.md §3.3). Strokes render as SVG paths from
  * perfect-freehand, in logical board units, so the board scales without redrawing.
- * Pencil and mouse draw. A finger or palm never draws; two-finger tap = undo,
- * three-finger tap = redo.
+ * Pencil and mouse draw. A finger or palm never draws (unless the iPad app says the user
+ * allows finger drawing); two-finger tap = undo, three-finger tap = redo. A hovering
+ * Pencil previews the tool under the tip, and the pencil tool shades with tilt and roll.
  */
 export default function InkCanvas({
   ink, tool = "pen", color = "#1f1a17", size = 7, w = BOARD_W, h = BOARD_H, placeholder, className = "", grid = true,
@@ -44,8 +67,11 @@ export default function InkCanvas({
 }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const live = useRef<SVGPathElement>(null);
+  const hover = useRef<SVGEllipseElement>(null);
   const pts = useRef<Point[] | null>(null);
   const activeId = useRef<number | null>(null);
+  const activeType = useRef<string | null>(null);
+  const rulerAligned = useRef(false);
   const activeStyle = useRef({ tool, color, size, simulatePressure: false });
   const eraseHits = useRef(new Set<string>());
   const touches = useRef(new Map<number, { x: number; y: number }>());
@@ -100,6 +126,48 @@ export default function InkCanvas({
   const pressure = (ev: { pointerType: string; pressure: number }) =>
     ev.pointerType === "pen" ? Math.max(0.15, ev.pressure || 0.5) : 0.5;
 
+  // The pencil tool shades like graphite: laying the Pencil down widens the stroke, and on
+  // Pencil Pro rolling the barrel turns the flat of the lead across the direction of travel.
+  const sample = (ev: Sample, prev?: Point): Point => {
+    const p = toBoard(ev, pressure(ev));
+    if (activeStyle.current.tool !== "pencil" || ev.pointerType !== "pen") return p;
+    let k = 1 + 1.4 * Math.max(0, (0.7 - altitudeOf(ev)) / 0.7);
+    if (pencilPose.roll != null && prev) {
+      const nib = azimuthOf(ev) + pencilPose.roll;
+      const dir = Math.atan2(p[1] - prev[1], p[0] - prev[0]);
+      k *= 0.75 + 0.5 * Math.abs(Math.sin(dir - nib));
+    }
+    p[2] = Math.min(1, p[2] * k);
+    return p;
+  };
+
+  /** Hover preview: the nib (or eraser ring) under a hovering Pencil, fainter as it lifts. */
+  const showHover = (e: React.PointerEvent<SVGSVGElement>) => {
+    const el = hover.current;
+    if (!el) return;
+    const on = e.pointerType === "pen" && e.buttons === 0 && activeId.current == null && (pencilPrefs()?.prefersHoverToolPreview ?? true);
+    if (!on) return el.setAttribute("visibility", "hidden");
+    const [x, y] = toBoard(e, 0.5);
+    const eraser = tool === "eraser";
+    const r = eraser ? ERASE_RADIUS : tool === "ruler" ? 3 : Math.max(2, (tool === "pencil" ? size * 0.6 : size) / 2);
+    const roll = tool === "pencil" ? pencilPose.roll : null;
+    el.setAttribute("cx", String(x));
+    el.setAttribute("cy", String(y));
+    el.setAttribute("rx", String(r));
+    el.setAttribute("ry", String(roll == null ? r : r * 0.45));
+    el.setAttribute("transform", roll == null ? "" : `rotate(${((azimuthOf(e.nativeEvent) + roll) * 180) / Math.PI} ${x} ${y})`);
+    el.setAttribute("fill", eraser ? "none" : strokeColor({ color }));
+    el.setAttribute("stroke", eraser ? "#6b6461" : "none");
+    el.setAttribute("opacity", String(0.6 - 0.35 * (pencilPose.z ?? 0.5)));
+    el.setAttribute("visibility", "visible");
+  };
+
+  /** Pencil Pro haptic at a board point. */
+  const haptic = (kind: "alignment" | "pathCompleted", p: Point) => {
+    const r = svg.current?.getBoundingClientRect();
+    if (r) pencilHaptic(kind, r.left + (p[0] / w) * r.width, r.top + (p[1] / h) * r.height);
+  };
+
   const eraseAt = (p: Point) => {
     onEraseAt?.(p[0], p[1]);
     const hit = strokesRef.current.filter((s) => !eraseHits.current.has(s.id) && distToStroke(s, p[0], p[1]) < ERASE_RADIUS + (s.size ?? 7) / 2);
@@ -118,21 +186,35 @@ export default function InkCanvas({
     setRuler(null);
   };
 
+  /** Drop the stroke or erase in progress without committing it. */
+  const abortStroke = () => {
+    cancelStroke();
+    eraseHits.current.clear();
+    setErasing(new Set());
+  };
+
   const down = (e: React.PointerEvent<SVGSVGElement>) => {
+    hover.current?.setAttribute("visibility", "hidden");
     if (e.pointerType === "touch") {
       touches.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
       const n = touches.current.size;
       if (n === 1) gesture.current = { max: 1, t0: performance.now(), moved: false };
-      else if (gesture.current) gesture.current.max = Math.max(gesture.current.max, n);
-      // Fingers and palms never ink; they only count toward undo/redo taps.
-      return;
+      else {
+        if (gesture.current) gesture.current.max = Math.max(gesture.current.max, n);
+        // A second finger turns a finger stroke into an undo/redo tap.
+        if (activeId.current != null && activeType.current === "touch") abortStroke();
+      }
+      // Fingers and palms only count toward undo/redo taps, unless finger drawing is on.
+      if (n !== 1 || !fingerDraws()) return;
     }
     if (activeId.current != null || e.button !== 0) return;
     e.currentTarget.focus({ preventScroll: true });
     e.currentTarget.setPointerCapture(e.pointerId);
     activeId.current = e.pointerId;
+    activeType.current = e.pointerType;
     activeStyle.current = { tool, color, size, simulatePressure: e.pointerType !== "pen" };
-    const p = toBoard(e, pressure(e));
+    rulerAligned.current = false;
+    const p = sample(e.nativeEvent);
     if (tool === "eraser") {
       erasedIds.current.clear();
       eraseHits.current.clear();
@@ -147,6 +229,7 @@ export default function InkCanvas({
   };
 
   const move = (e: React.PointerEvent<SVGSVGElement>) => {
+    showHover(e);
     if (e.pointerType === "touch" && touches.current.has(e.pointerId)) {
       const t = touches.current.get(e.pointerId)!;
       if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > 12 && gesture.current) gesture.current.moved = true;
@@ -160,15 +243,27 @@ export default function InkCanvas({
       return;
     }
     if (!pts.current) return;
+    let shown = pts.current;
     if (style.tool === "ruler") {
       const start = pts.current[0];
       const end = rulerEnd(start, toBoard(e, 0.5), e.shiftKey);
-      pts.current = [start, end];
+      pts.current = shown = [start, end];
       setRuler([start, end]);
+      // Tick the Pencil Pro as the line passes horizontal, vertical or 45°.
+      const deg = Math.abs((Math.atan2(end[1] - start[1], end[0] - start[0]) * 180) / Math.PI) % 45;
+      const aligned = Math.min(deg, 45 - deg) < 1 && Math.hypot(end[0] - start[0], end[1] - start[1]) > 20;
+      if (aligned && !rulerAligned.current) haptic("alignment", end);
+      rulerAligned.current = aligned;
     } else {
-      for (const ev of events) pts.current.push(toBoard(ev, pressure(ev)));
+      for (const ev of events) pts.current.push(sample(ev, pts.current[pts.current.length - 1]));
+      // Predicted samples draw ahead of the tip to hide latency; they are never saved.
+      const predicted = e.nativeEvent.getPredictedEvents?.() ?? [];
+      if (predicted.length) {
+        const last = pts.current[pts.current.length - 1];
+        shown = [...pts.current, ...predicted.map((ev) => sample(ev, last))];
+      }
     }
-    live.current?.setAttribute("d", strokePath(pts.current, style.simulatePressure, style));
+    live.current?.setAttribute("d", strokePath(shown, style.simulatePressure, style));
     const last = pts.current[pts.current.length - 1];
     const c = style.tool !== "ruler" && isCurvingBack(pts.current);
     setCurving(c ? { x: last[0], y: last[1] } : null);
@@ -213,7 +308,10 @@ export default function InkCanvas({
     ink.commit([...strokesRef.current, stroke]);
     onStroke?.(stroke);
     const loop = style.tool !== "ruler" && closedLoop(points);
-    if (loop) onCircle?.(loop);
+    if (loop && onCircle) {
+      onCircle(loop);
+      haptic("pathCompleted", points[points.length - 1]);
+    }
   };
 
   const empty = ink.strokes.length === 0 && !drawing;
@@ -237,11 +335,9 @@ export default function InkCanvas({
         onPointerCancel={(e) => {
           touches.current.delete(e.pointerId);
           gesture.current = null;
-          if (activeId.current !== e.pointerId) return;
-          cancelStroke();
-          eraseHits.current.clear();
-          setErasing(new Set());
+          if (activeId.current === e.pointerId) abortStroke();
         }}
+        onPointerLeave={() => hover.current?.setAttribute("visibility", "hidden")}
       >
         {background}
         {ink.strokes.map((s) => (
@@ -251,6 +347,7 @@ export default function InkCanvas({
           <path key={key} d={savedStrokePath(s)} fill={strokeColor(s)} opacity={strokeOpacity(s)} className="ink-lift" />
         ))}
         <path ref={live} />
+        <ellipse ref={hover} visibility="hidden" strokeWidth={1.5} pointerEvents="none" aria-hidden />
         {ruler && <RulerGuide start={ruler[0]} end={ruler[1]} />}
       </svg>
       {placeholder && (

@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import dynamic from "next/dynamic";
 import { INK_COLORS } from "@/lib/ink";
 import { wiggle } from "@/lib/motion";
+import { onPencil, type PencilEvent } from "@/lib/native";
 import type { Ink } from "@/lib/useInk";
 import type { Tool } from "./InkCanvas";
 
@@ -46,18 +48,52 @@ function Tb({ name, label, active, onClick, disabled, danger }: { name: string; 
   );
 }
 
+const SIZES = [{ value: 3, label: "Fine" }, { value: 7, label: "Medium" }, { value: 11, label: "Thick" }];
+
 /** Shared pencil case for homework and standalone boards. */
-export default function Toolbar({ ink, tool, setTool, color, setColor, size, setSize }: {
+export default function Toolbar({ ink, tool, setTool: setToolRaw, color, setColor, size, setSize }: {
   ink: Ink; tool: Tool; setTool: (t: Tool) => void;
   color: string; setColor: (color: string) => void;
   size: number; setSize: (size: number) => void;
 }) {
   const [arm, setArm] = useState(false);
   const [palette, setPalette] = useState(false);
+  const [floating, setFloating] = useState<{ x: number; y: number } | null>(null);
   const [calculator, setCalculator] = useState(false);
   const [calculatorLoaded, setCalculatorLoaded] = useState(false);
   const paletteRef = useRef<HTMLDivElement>(null);
   const { undo, redo } = ink;
+
+  // Remember the tool before the current one, for Pencil double-tap "switch to previous".
+  const toolRef = useRef(tool);
+  const prevTool = useRef<Tool>(tool === "eraser" ? "pen" : "eraser");
+  toolRef.current = tool;
+  const setTool = useRef((t: Tool) => {
+    if (t !== toolRef.current) prevTool.current = toolRef.current;
+    setToolRaw(t);
+  }).current;
+
+  // Apple Pencil double-tap and squeeze (iPad app), doing what the user chose in Settings → Apple Pencil.
+  useEffect(() => onPencil((e: PencilEvent) => {
+    if (e.type === "tap" || (e.type === "squeeze" && e.phase === "ended")) {
+      const current = toolRef.current;
+      switch (e.action) {
+        case "switchEraser":
+          setTool(current === "eraser" ? (prevTool.current === "eraser" ? "pen" : prevTool.current) : "eraser");
+          break;
+        case "switchPrevious":
+          setTool(prevTool.current === current ? (current === "pen" ? "eraser" : "pen") : prevTool.current);
+          break;
+        case "showColorPalette":
+          setPalette((open) => !open);
+          break;
+        case "showInkAttributes":
+        case "showContextualPalette":
+          setFloating((open) => (open ? null : { x: e.x ?? window.innerWidth / 2, y: e.y ?? window.innerHeight / 2 }));
+          break;
+      }
+    }
+  }), [setTool]);
   useEffect(() => {
     if (!arm) return;
     const t = setTimeout(() => setArm(false), 3000);
@@ -113,7 +149,7 @@ export default function Toolbar({ ink, tool, setTool, color, setColor, size, set
           )}
         </div>
         <select aria-label="Stroke width" value={size} onChange={(e) => setSize(Number(e.target.value))} className="h-[44px] max-w-[88px] rounded-lg border border-rule bg-white px-1 text-[0.8rem]">
-          <option value={3}>Fine</option><option value={7}>Medium</option><option value={11}>Thick</option>
+          {SIZES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
         <span className="mx-1 h-6 w-px bg-rule" aria-hidden />
         <Tb name="undo" label="undo (⌘Z)" onClick={ink.undo} disabled={!ink.canUndo} />
@@ -134,6 +170,80 @@ export default function Toolbar({ ink, tool, setTool, color, setColor, size, set
       </div>
       {tool === "ruler" && <p className="text-center text-[0.75rem] text-muted">Drag a straight line · hold Shift to snap to 15°</p>}
       {calculatorLoaded && <ScientificCalculator open={calculator} onClose={() => setCalculator(false)} />}
+      {floating && createPortal(
+        <PencilPalette
+          at={floating}
+          onClose={() => setFloating(null)}
+          ink={ink} tool={tool} setTool={setTool} color={color} setColor={setColor} size={size} setSize={setSize}
+        />,
+        document.body,
+      )}
+    </div>
+  );
+}
+
+/**
+ * Contextual palette that opens at the Pencil tip on squeeze (Pencil Pro) or double-tap,
+ * when the user set that action to "Show contextual palette" / "Show ink attributes".
+ */
+function PencilPalette({ at, onClose, ink, tool, setTool, color, setColor, size, setSize }: {
+  at: { x: number; y: number }; onClose: () => void;
+  ink: Ink; tool: Tool; setTool: (t: Tool) => void;
+  color: string; setColor: (color: string) => void;
+  size: number; setSize: (size: number) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const W = 300, H = 170;
+  const left = Math.max(8, Math.min(at.x - W / 2, window.innerWidth - W - 8));
+  const top = at.y + 28 + H < window.innerHeight ? at.y + 28 : Math.max(8, at.y - 28 - H);
+
+  useEffect(() => {
+    const away = (e: PointerEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    const esc = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    document.addEventListener("pointerdown", away);
+    window.addEventListener("keydown", esc);
+    return () => {
+      document.removeEventListener("pointerdown", away);
+      window.removeEventListener("keydown", esc);
+    };
+  }, [onClose]);
+
+  const pick = (t: Tool) => { setTool(t); onClose(); };
+
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label="Pencil palette"
+      className="hand wb fixed z-50 flex flex-col gap-1 bg-white p-2 shadow-[3px_4px_0_#f6d9d5]"
+      style={{ left, top, width: W }}
+    >
+      <div className="flex items-center justify-between">
+        <Tb name="pen" label="Pen" active={tool === "pen"} onClick={() => pick("pen")} />
+        <Tb name="pencil" label="Pencil" active={tool === "pencil"} onClick={() => pick("pencil")} />
+        <Tb name="ruler" label="Ruler" active={tool === "ruler"} onClick={() => pick("ruler")} />
+        <Tb name="eraser" label="Eraser" active={tool === "eraser"} onClick={() => pick("eraser")} />
+        <Tb name="undo" label="undo" onClick={ink.undo} disabled={!ink.canUndo} />
+        <Tb name="redo" label="redo" onClick={ink.redo} disabled={!ink.canRedo} />
+      </div>
+      <div role="group" aria-label="Ink colours" className="flex items-center justify-between px-1">
+        {INK_COLORS.map((c) => (
+          <button key={c.value} type="button" aria-label={`${c.name} ink`} aria-pressed={color === c.value}
+            onClick={() => { setColor(c.value); if (tool === "eraser") setTool("pen"); onClose(); }}
+            className="flex h-[44px] w-[44px] items-center justify-center rounded-full">
+            <span className={`h-[26px] w-[26px] rounded-full border-2 border-white ${color === c.value ? "ring-2 ring-ink" : "ring-1 ring-rule"}`} style={{ background: c.value }} />
+          </button>
+        ))}
+      </div>
+      <div role="group" aria-label="Stroke width" className="flex gap-1">
+        {SIZES.map((s) => (
+          <button key={s.value} type="button" aria-pressed={size === s.value} onClick={() => setSize(s.value)}
+            className={`flex h-[40px] flex-1 items-center justify-center gap-2 rounded-full text-[0.8rem] ${size === s.value ? "bg-blush" : ""}`}>
+            <span className="rounded-full bg-ink" style={{ width: s.value + 2, height: s.value + 2 }} aria-hidden />
+            {s.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

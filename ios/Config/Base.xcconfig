@@ -1,0 +1,23 @@
+// Shared build settings for the iPad app. Personal values (your Apple ID team, a
+// different server) go in Local.xcconfig, which is gitignored: copy
+// Local.xcconfig.example to Local.xcconfig and edit it.
+//
+// Note: "//" starts a comment in xcconfig files, so URLs are written as http:/$()/host.
+
+// A free Apple ID ("Personal Team") needs a bundle ID nobody else has registered,
+// so the default is suffixed with your Mac user name.
+TAMATAR_BUNDLE_ID = si.tamatar.ipad.$(USER)
+
+// Leave empty to auto-detect: the Simulator uses http://localhost:3000 and a real
+// iPad uses http://<this Mac's Bonjour name>.local:3000 (written in at build time).
+// Set it to use a deployed server instead, e.g. https:/$()/tamatar.vercel.app
+TAMATAR_SERVER_URL =
+
+// Port of `npm run dev:ipad` on this Mac, used for the auto-detected URL.
+TAMATAR_DEV_PORT = 3000
+
+// Your team ID (Xcode → Settings → Accounts → your Apple ID → Personal Team).
+// Prefer setting it in Local.xcconfig so it does not end up in the shared project.
+DEVELOPMENT_TEAM =
+
+#include? "Local.xcconfig"

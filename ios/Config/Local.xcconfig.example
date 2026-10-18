@@ -1,0 +1,10 @@
+// Copy to Local.xcconfig (gitignored) and fill in. Anything here overrides Base.xcconfig.
+
+// Xcode → Settings → Accounts → select your Apple ID → the 10-character ID of "Personal Team".
+DEVELOPMENT_TEAM = ABCDE12345
+
+// Optional: a fixed server instead of auto-detection ("//" must be written as /$()/).
+// TAMATAR_SERVER_URL = http:/$()/192.168.1.20:3000
+
+// Optional: change if Xcode says the bundle ID is unavailable.
+// TAMATAR_BUNDLE_ID = com.yourname.tamatar
