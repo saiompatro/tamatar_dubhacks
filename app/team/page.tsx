@@ -20,7 +20,7 @@ export default function Team() {
             <div className="lp-tape" style={{ right: "10%", rotate: "7deg" }} aria-hidden />
             <div className="wb overflow-hidden border-[2.5px] border-ink bg-white p-2 shadow-[6px_8px_0_#f6d9d5]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={TEAM_PHOTO} alt="Rajvir Ajmani, Arnav Bhattacharya and Saiom Patro at DubHacks" className="wa aspect-[3/4] w-full object-cover" />
+              <img src={TEAM_PHOTO} alt="Saiom Patro, Rajvir Ajmani and Arnav Bhattacharya at DubHacks" className="wa aspect-[3/4] w-full object-cover" />
             </div>
           </div>
           <figcaption className="mt-8 grid grid-cols-3 gap-4 text-center">
