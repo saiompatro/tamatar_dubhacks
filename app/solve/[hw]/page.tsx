@@ -180,7 +180,25 @@ export default function Solve({ params }: { params: { hw: string } }) {
   const setLevel = (l: HelpLevel) => {
     store.setHelpLevel(l);
     chk.countReveal(l, !!chk.result && !chk.result.correct);
+    if (chk.result && !chk.result.correct) store.noteHelp(problem.id, l);
+    if (l >= 2) setNudge(false);
   };
+
+  // Same slip twice in a row: the tamatar leans in and offers the explain rung (concern, not shame).
+  const lastSlip = useRef<Record<string, string | null>>({});
+  const [nudge, setNudge] = useState(false);
+  useEffect(() => {
+    const r = chk.result;
+    if (!r) return setNudge(false);
+    const k = `${problem.id}:${part}`;
+    const repeat = !r.correct && !!r.errorKey && lastSlip.current[k] === r.errorKey;
+    lastSlip.current[k] = r.correct ? null : r.errorKey;
+    if (!r.correct) store.noteHelp(problem.id, store.helpLevel);
+    setNudge(repeat && store.helpLevel < 2);
+    if (repeat) store.react("lean");
+    // runs once per new check result
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chk.key, part]);
 
   const checkReason = chk.thinking ? "the red pen is still reading" : !ink.strokes.length ? (part === "fbd" ? "draw the forces first" : "write your answer first") : null;
   const nextReason = problemDone ? null : withDiagram && !prog.fbd ? "get the diagram right first" : withDiagram ? "finish the equations first" : "finish the solution first";
@@ -375,6 +393,19 @@ export default function Solve({ params }: { params: { hw: string } }) {
             Check
           </Button>
           {chk.error && <p role="alert" className="solve-error text-[0.85rem] text-tomato">{chk.error}</p>}
+          {nudge && (
+            <div className="sticky-note sticky-drop text-[0.85rem] leading-snug" role="status">
+              we&rsquo;ve hit this one twice. want the explain rung?
+              <div className="mt-2 flex gap-2">
+                <button type="button" className="btn btn-red wa !min-h-[2rem] !px-3 !text-[0.8rem]" onClick={() => setLevel(2)}>
+                  yes, explain
+                </button>
+                <button type="button" className="link text-[0.8rem] text-muted" onClick={() => setNudge(false)}>
+                  not yet
+                </button>
+              </div>
+            </div>
+          )}
           <div className="solve-help-vertical"><HelpLevelBar level={level} onChange={setLevel} compact={!railOpen} /></div>
           <div className="solve-help-horizontal"><HelpLevelBar level={level} onChange={setLevel} horizontal /></div>
           <div className="solve-tally"><Tally n={fbdCheck.hints + eqCheck.hints} /></div>

@@ -61,6 +61,8 @@ export default function MeetTamatar() {
       >
         {said?.line ?? HELLOS[i]}
       </h1>
+      {/* the name, so the fruit lands */}
+      <p className="mb-1 text-center text-[1rem] text-muted">tamatar (&lsquo;tomato&rsquo; in Hindi)</p>
       <div style={{ animation: "hero-drop 900ms var(--pop) both" }}>
         <Tomato cssSize="min(34dvh, 55vw)" onSay={(line) => setSaid((p) => ({ line, n: (p?.n ?? 0) + 1 }))} />
       </div>

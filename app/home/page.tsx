@@ -14,6 +14,7 @@ import { STATUS_LINES } from "@/lib/tomato";
 import type { TomatoState } from "@/lib/types";
 import Button from "@/components/Button";
 import DueDateEdit from "@/components/DueDateEdit";
+import HelpStat from "@/components/HelpStat";
 import ProgressBar from "@/components/ProgressBar";
 import StrokeThumb from "@/components/StrokeThumb";
 import QuoteLine from "@/components/QuoteLine";
@@ -105,6 +106,8 @@ export default function Home() {
             <QuoteLine className="mt-2 text-[1.15rem]" />
           </div>
         </section>
+
+        <HelpStat />
 
         {uploaded.length > 0 && (
           <>

@@ -74,4 +74,4 @@ export type FigureBox = { problemIndex: number; page: number; x0: number; y0: nu
 export type ExtractResponse = { problems: Problem[]; unsupported: string[]; figures?: FigureBox[] };
 
 // ---------- Tomato ----------
-export type TomatoState = 0 | 1 | 2 | 3; // fresh | bruised | wilting | rotten
+export type TomatoState = 0 | 1 | 2 | 3; // happy | watchful | concerned | worried (it worries, it doesn't rot)

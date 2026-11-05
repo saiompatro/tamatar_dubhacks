@@ -6,7 +6,9 @@ import { STATUS_LINES, TAP_LINES, type TomatoReactionKind } from "@/lib/tomato";
 import type { TomatoState } from "@/lib/types";
 import { speak } from "@/lib/voice";
 
-const BODY = ["#e2463a", "#d4574a", "#b8664a", "#8f7d46"];
+// Same mechanic as before, read as concern, not decay: it stays a healthy red and just gets
+// more worried (brows, a sweat drop, leaning in) when a slip repeats.
+const BODY = ["#e2463a", "#e0453a", "#dd4639", "#da4739"];
 const MOUTH = [
   "M40 66 Q50 76 60 66",
   "M42 68.5 Q50 70 58 68.5",
@@ -122,7 +124,7 @@ export default function Tomato({
       say("hey! okay, that's enough poking");
     } else {
       setAnim((a) => ({ kind: "squish", n: (a?.n ?? 0) + 1 }));
-      say(Math.random() < 0.4 ? STATUS_LINES[s] : s === 3 ? "ugh… tap me after a right answer" : TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]);
+      say(Math.random() < 0.4 ? STATUS_LINES[s] : s === 3 ? "hey, we keep hitting this one. want a hint?" : TAP_LINES[Math.floor(Math.random() * TAP_LINES.length)]);
     }
     onTap?.();
   };
@@ -165,6 +167,8 @@ export default function Tomato({
           </filter>
         </defs>
         <g key={anim?.n ?? 0} className={animClass} style={{ transformOrigin: "50% 90%" }} onAnimationEnd={(e) => e.stopPropagation()}>
+          {/* leans in when it's worried about you */}
+          <g style={{ transformOrigin: "50px 92px", transform: s >= 2 ? `rotate(${s === 3 ? -9 : -5}deg) scale(1.03)` : "none", transition: "transform 600ms var(--pop)" }}>
           <g className="breathe">
             <g filter={`url(#boil-${uid})`}>
               {/* body */}
@@ -176,17 +180,12 @@ export default function Tomato({
                 strokeLinejoin="round"
                 style={{ transition: "fill 600ms ease" }}
               />
-              {s <= 1 && <ellipse cx="30" cy="40" rx="4" ry="7.5" fill="#fff" opacity=".85" transform="rotate(30 30 40)" />}
-              {/* rot spots + wrinkles */}
-              {s >= 1 && <ellipse cx="68" cy="73" rx="6" ry="4.5" fill="#7a4a2a" opacity=".55" />}
-              {s >= 2 && <ellipse cx="27" cy="70" rx="5" ry="4" fill="#6b4a26" opacity=".55" />}
-              {s >= 2 && <path d="M70 46 q4 3 0 6 M74 52 q3 2 0 5" stroke="var(--ink)" strokeWidth="1.4" fill="none" opacity=".6" />}
-              {s >= 3 && <ellipse cx="58" cy="34" rx="5" ry="3.5" fill="#55602a" opacity=".6" />}
+              <ellipse cx="30" cy="40" rx="4" ry="7.5" fill="#fff" opacity=".85" transform="rotate(30 30 40)" />
               {/* stem */}
-              <g style={{ transformOrigin: "50px 24px", transform: s >= 2 ? `rotate(${s === 3 ? 38 : 22}deg)` : "none", transition: "transform 600ms var(--pop)" }}>
+              <g style={{ transformOrigin: "50px 24px" }}>
                 <path
                   d="M50 26 L37 19 L46 20 L42 9 L50 18 L58 9 L54 20 L63 19 Z"
-                  fill={s === 3 ? "#7d8a3a" : "#3f8f3a"}
+                  fill="#3f8f3a"
                   stroke="var(--ink)"
                   strokeWidth="2.2"
                   strokeLinejoin="round"
@@ -196,6 +195,15 @@ export default function Tomato({
             </g>
             {/* face: follows the pointer as a whole, eyes move a bit further */}
             <g ref={face} style={{ transition: "transform 140ms" }}>
+            {/* worried brows: inner ends lift as concern grows */}
+            {s >= 1 && (
+              <path
+                d={s === 1 ? "M32 46 L42 44.5 M58 44.5 L68 46" : s === 2 ? "M32 47 L42 43 M58 43 L68 47" : "M32 48 L42 42 M58 42 L68 48"}
+                stroke="var(--ink)"
+                strokeWidth="2.2"
+                strokeLinecap="round"
+              />
+            )}
             {s === 0 && (
               <>
                 <ellipse cx="33" cy="63" rx="4.5" ry="2.6" fill="#ff9b8f" opacity=".7" />
@@ -204,14 +212,8 @@ export default function Tomato({
             )}
             <g className="eyes">
               <g ref={eyes} style={{ transition: "transform 120ms" }}>
-                {s === 3 ? (
-                  <path d="M34 51 l6 6 M40 51 l-6 6 M60 51 l6 6 M66 51 l-6 6" stroke="var(--ink)" strokeWidth="2.4" strokeLinecap="round" />
-                ) : (
-                  <>
-                    <circle cx="38" cy="54" r="3.4" fill="var(--ink)" />
-                    <circle cx="62" cy="54" r="3.4" fill="var(--ink)" />
-                  </>
-                )}
+                <circle cx="38" cy="54" r={s >= 2 ? 3.9 : 3.4} fill="var(--ink)" />
+                <circle cx="62" cy="54" r={s >= 2 ? 3.9 : 3.4} fill="var(--ink)" />
               </g>
             </g>
             {speaking ? (
@@ -220,6 +222,7 @@ export default function Tomato({
               <path d={MOUTH[s]} stroke="var(--ink)" strokeWidth="2.6" fill="none" strokeLinecap="round" />
             )}
             </g>
+          </g>
           </g>
           {anim?.kind === "flinch" || anim?.kind === "rot" ? (
             <path className="sweat" d="M80 34 q4 6 0 9 q-4 -3 0 -9 Z" fill="#8fd0ff" stroke="var(--ink)" strokeWidth="1.2" />
@@ -230,13 +233,8 @@ export default function Tomato({
             </g>
           )}
         </g>
-        {s === 3 && (
-          <g className="fly">
-            <ellipse cx="50" cy="50" rx="2.6" ry="2" fill="var(--ink)" />
-            <ellipse cx="48.5" cy="47.6" rx="2" ry="1.3" fill="#fff" stroke="var(--ink)" strokeWidth=".8" />
-            <ellipse cx="51.5" cy="47.6" rx="2" ry="1.3" fill="#fff" stroke="var(--ink)" strokeWidth=".8" />
-          </g>
-        )}
+        {/* a worried sweat drop that stays while it's concerned */}
+        {s >= 2 && <path d="M79 36 q4 6 0 9 q-4 -3 0 -9 Z" fill="#8fd0ff" stroke="var(--ink)" strokeWidth="1.2" />}
       </svg>
     </div>
   );

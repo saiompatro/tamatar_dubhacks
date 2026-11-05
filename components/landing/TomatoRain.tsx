@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import PhoneNudge from "./PhoneNudge";
 import { useInView } from "./useStage";
 
 // A small version of the opening sequence (delight.md §4): tamatars drop into a basket
@@ -53,7 +54,8 @@ export default function TomatoRain() {
       <Link href="/#waitlist" className="btn btn-red wa lp-cta mt-7 !min-h-[60px] !px-9 !text-[1.4rem]">
         join the waitlist →
       </Link>
-      <p className="mt-3 text-[0.75rem] text-muted">works best on iPad with Apple Pencil. a mouse is fine too.</p>
+      <p className="mt-3 text-[0.75rem] text-muted">made for iPad with Apple Pencil. a laptop and mouse work too.</p>
+      <PhoneNudge className="mt-4 max-w-[26rem]" />
     </div>
   );
 }

@@ -5,10 +5,10 @@ export type TomatoMemory = { state: TomatoState; lastErrorKey: string | null };
 export type TomatoReactionKind = "jump" | "flinch" | "rot" | "squish" | "lean";
 
 export const STATUS_LINES: Record<TomatoState, string> = {
-  0: "your tamatar is looking fresh today",
-  1: "your tamatar is looking a little sad",
-  2: "your tamatar needs some right answers",
-  3: "your tamatar has seen better days",
+  0: "your tamatar is happy today",
+  1: "your tamatar is keeping an eye on you",
+  2: "your tamatar is a little worried about you",
+  3: "your tamatar is worried. try the explain rung?",
 };
 
 /** Things tamatar says at random: on the home pages and when you poke it. Hand-written, no AI. */
@@ -23,7 +23,7 @@ export const QUOTES = [
   "i have seen your free-body diagrams",
   "units. please. i'm begging.",
   "arre, mg sin θ, not mg cos θ",
-  "one more slip and i start to rot",
+  "same slip twice? i'll get the explain rung",
   "start the arrow on the block, not the moon",
   "the red pen is warming up",
   "friction always fights back",
@@ -49,7 +49,7 @@ export function randomQuote(prev?: string) {
 
 const clamp = (n: number) => Math.max(0, Math.min(3, n)) as TomatoState;
 
-/** Wrong answer: flinch. Repeating the same mistake rots one state. */
+/** Wrong answer: flinch. Repeating the same mistake makes it one step more worried. */
 export function onWrong(m: TomatoMemory, errorKey: string | null): { next: TomatoMemory; reaction: TomatoReactionKind } {
   const repeat = errorKey != null && errorKey === m.lastErrorKey;
   return {

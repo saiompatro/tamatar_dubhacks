@@ -14,7 +14,7 @@ const CARDS = [
   { title: "Write your work on the canvas", body: "Use your Pencil like it is paper. No typing, no special syntax." },
   { title: "Draw forces as arrows", body: "Start every arrow on the object. tamatar checks which way each one points." },
   { title: "Circle your answer when you are done", body: "A circle means finished. Then tamatar offers to check it." },
-  { title: "Meet your tamatar", body: "Right answers keep it fresh. A run of misses makes it rot." },
+  { title: "Meet your tamatar", body: "Right answers keep it happy. Repeat a slip and it gets worried, then offers more help." },
 ];
 
 /** Re-mounts its children every `ms`, so one-shot draw/write animations loop. */

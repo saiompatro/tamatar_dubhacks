@@ -12,7 +12,10 @@ export default function Team() {
         <h1 className="text-center" style={{ fontSize: "clamp(2.4rem, 6vw, 3.6rem)" }}>
           meet the team
         </h1>
-        <p className="mb-8 text-center text-[1.1rem] text-ink-2">the people who taught a tamatar physics</p>
+        <p className="text-center text-[1.1rem] text-ink-2">the people who taught a tamatar physics</p>
+        <p className="mb-8 mt-1 text-center text-[0.95rem] text-tomato" style={{ rotate: "-1.5deg" }}>
+          made in one night at DubHacks
+        </p>
 
         <figure className="mx-auto w-full max-w-[24rem]" style={{ animation: "deal-in 500ms var(--pop) both" }}>
           <div className="relative" style={{ rotate: "-1.5deg" }}>

@@ -41,6 +41,9 @@ type Store = {
   setProgress: (problemId: string, p: PartProgress) => void;
   answers: Record<string, Answer>;
   saveAnswer: (problemId: string, a: Answer) => void;
+  /** Most help revealed per problem (0 mark … 3 answer): feeds the "solved on one mark" stat. */
+  helpUsed: Record<string, number>;
+  noteHelp: (problemId: string, level: number) => void;
   homework: Homework[];
   /** Saves an uploaded worksheet (to the account when signed in) and returns it as stored. */
   addHomework: (hw: Homework) => Promise<Homework>;
@@ -67,6 +70,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [helpLevel, setHelpLevelRaw] = useState<HelpLevel>(0);
   const [progress, setProgressRaw] = useState<Record<string, PartProgress>>({});
   const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [helpUsed, setHelpUsed] = useState<Record<string, number>>({});
   const [importedHomework, setImportedHomework] = useState<Homework[]>([]);
   const [boards, setBoards] = useState<Board[]>(DEFAULT_BOARDS);
   const [toastMsg, setToastMsg] = useState<{ msg: string; n: number } | null>(null);
@@ -91,6 +95,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setHelpLevelRaw(load("helpLevel", 0));
     setProgressRaw(load("progress", {}));
     setAnswers(load("answers", {}));
+    setHelpUsed(load("helpUsed", {}));
     setBoards(load("boards", DEFAULT_BOARDS));
     setImportedHomework(load("homework", []));
     setReady(true);
@@ -155,6 +160,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           setNameRaw(""); save("name", "");
           setProgressRaw({}); save("progress", {});
           setAnswers({}); save("answers", {});
+          setHelpUsed({}); save("helpUsed", {});
           setImportedHomework([]); save("homework", []);
         }
         setAuthReady(true);
@@ -245,6 +251,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     queueSync(id);
   }, [queueSync]);
 
+  const noteHelp = useCallback((id: string, level: number) => {
+    setHelpUsed((all) => {
+      if ((all[id] ?? 0) >= level) return all;
+      const next = { ...all, [id]: level };
+      save("helpUsed", next);
+      return next;
+    });
+  }, []);
+
   const saveAnswer = useCallback((id: string, a: Answer) => {
     setAnswers((all) => {
       if (all[id] === a) return all;
@@ -293,6 +308,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setHelpLevelRaw(0);
     setProgressRaw({});
     setAnswers({});
+    setHelpUsed({});
     setBoards(DEFAULT_BOARDS);
     setImportedHomework([]);
   }, []);
@@ -300,9 +316,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<Store>(
     () => ({
       ready, account, authReady, needsAccount: cloud.supabaseConfigured, signOut, profile, saveProfile, name, setName, tomato, setTomatoState, reaction, react, applyCheck, streak,
-      helpLevel, setHelpLevel, progress, setProgress, answers, saveAnswer, homework: [...importedHomework, ...HOMEWORK], addHomework, setDueDate, boards, saveBoard, toast, resetAll,
+      helpLevel, setHelpLevel, progress, setProgress, answers, saveAnswer, helpUsed, noteHelp, homework: [...importedHomework, ...HOMEWORK], addHomework, setDueDate, boards, saveBoard, toast, resetAll,
     }),
-    [ready, account, authReady, signOut, profile, saveProfile, name, setName, tomato, setTomatoState, reaction, react, applyCheck, streak, helpLevel, setHelpLevel, progress, setProgress, answers, saveAnswer, importedHomework, addHomework, setDueDate, boards, saveBoard, toast, resetAll],
+    [ready, account, authReady, signOut, profile, saveProfile, name, setName, tomato, setTomatoState, reaction, react, applyCheck, streak, helpLevel, setHelpLevel, progress, setProgress, answers, saveAnswer, helpUsed, noteHelp, importedHomework, addHomework, setDueDate, boards, saveBoard, toast, resetAll],
   );
 
   return (

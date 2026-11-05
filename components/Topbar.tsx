@@ -60,9 +60,9 @@ function DueDot({ className = "" }: { className?: string }) {
   return <span className={`absolute h-2 w-2 rounded-full bg-tomato ring-2 ring-white ${className}`} aria-hidden />;
 }
 
-/** Wordmark · nav · streak · Challenge · New + menu (§4.4). `floating` = transparent, for the landing hero. */
+/** Wordmark · nav · tamatar badge · Challenge · New + menu (§4.4). `floating` = transparent, for the landing hero. */
 export default function Topbar({ children, floating = false }: { children?: React.ReactNode; floating?: boolean }) {
-  const { streak, saveBoard, account, signOut, toast, homework, progress, name } = useStore();
+  const { saveBoard, account, signOut, toast, homework, progress, name } = useStore();
   const router = useRouter();
   const path = usePathname();
   const waitlistOnly = floating || path === "/team";
@@ -138,10 +138,11 @@ export default function Topbar({ children, floating = false }: { children?: Reac
         )}
       </div>
       <div className="min-w-0 flex-1">{children}</div>
-      {!waitlistOnly && <div className="hidden items-center gap-1 text-[0.9rem] text-ink-2 lg:flex" title={`${streak} day streak`}>
-        <Tomato size={34} track={false} />
-        {streak}
-      </div>}
+      {!waitlistOnly && (
+        <div className="hidden items-center lg:flex">
+          <Tomato size={34} track={false} />
+        </div>
+      )}
       {waitlistOnly ? (
         <Link href="/#waitlist" className="btn btn-red wc !text-[1rem]">
           join the waitlist

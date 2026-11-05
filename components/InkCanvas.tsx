@@ -27,6 +27,8 @@ type Props = {
   onEraseAt?: (x: number, y: number) => void;
   /** Fixed drawing under the ink (e.g. the ramp on the diagram board), in board units. */
   background?: React.ReactNode;
+  /** Let one finger draw too (landing demo, for visitors without a Pencil or mouse). */
+  allowTouch?: boolean;
   children?: React.ReactNode;
 };
 
@@ -40,7 +42,7 @@ const ERASE_RADIUS = 16;
  */
 export default function InkCanvas({
   ink, tool = "pen", color = "#1f1a17", size = 7, w = BOARD_W, h = BOARD_H, placeholder, className = "", grid = true,
-  onCircle, onStroke, onEraseAt, background, children,
+  onCircle, onStroke, onEraseAt, background, allowTouch = false, children,
 }: Props) {
   const svg = useRef<SVGSVGElement>(null);
   const live = useRef<SVGPathElement>(null);
@@ -124,8 +126,8 @@ export default function InkCanvas({
       const n = touches.current.size;
       if (n === 1) gesture.current = { max: 1, t0: performance.now(), moved: false };
       else if (gesture.current) gesture.current.max = Math.max(gesture.current.max, n);
-      // Fingers and palms never ink; they only count toward undo/redo taps.
-      return;
+      // Fingers and palms never ink in the notebook; they only count toward undo/redo taps.
+      if (!allowTouch || n > 1) return;
     }
     if (activeId.current != null || e.button !== 0) return;
     e.currentTarget.focus({ preventScroll: true });

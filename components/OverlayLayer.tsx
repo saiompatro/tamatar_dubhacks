@@ -25,6 +25,8 @@ type Props = {
   obstacles?: [number, number][];
   /** Optional bounded help host, separate from the ink surface so text can scroll by touch. */
   helpSlot?: HTMLElement | null;
+  /** Show the read-aloud tamatar on hints (off on the public landing demo, where /api/speak is closed). */
+  voice?: boolean;
 };
 
 const NO_POINTS: [number, number][] = [];
@@ -153,7 +155,7 @@ function Confetti() {
   );
 }
 
-export default function OverlayLayer({ result, resultKey, level, thinking, stale, dimmed, successText, onMarkTap, onCheckAgain, obstacles = NO_POINTS, helpSlot }: Props) {
+export default function OverlayLayer({ result, resultKey, level, thinking, stale, dimmed, successText, onMarkTap, onCheckAgain, obstacles = NO_POINTS, helpSlot, voice = true }: Props) {
   const [copyIdx, setCopyIdx] = useState(0);
   useEffect(() => {
     if (!thinking) return;
@@ -202,7 +204,7 @@ export default function OverlayLayer({ result, resultKey, level, thinking, stale
     <div key={`help-${resultKey}`} className="help-reveals flex max-h-full min-h-0 w-full flex-col items-start gap-2">
       {level >= 1 && (result?.hint || (level >= 2 && result?.explanation) || (level >= 3 && result?.fullSolution)) && (
         <div className="help-note sticky-note sticky-drop pointer-events-auto flex max-h-full min-h-0 w-full flex-col text-left text-[0.85rem] leading-snug">
-          {!thinking && <TamatarAgent explanation={normalizeForFont((level >= 2 && result.explanation) || result.hint || (level >= 3 && result.fullSolution) || "")} />}
+          {voice && !thinking && <TamatarAgent explanation={normalizeForFont((level >= 2 && result.explanation) || result.hint || (level >= 3 && result.fullSolution) || "")} />}
           <div className="help-copy min-h-0 overflow-y-auto overscroll-contain">
             {normalizeForFont(result.hint || "")}
             {level >= 2 && result.explanation && (

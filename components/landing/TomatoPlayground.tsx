@@ -5,13 +5,13 @@ import Tomato from "@/components/Tomato";
 import type { TomatoState } from "@/lib/types";
 
 const STATES: { label: string; line: string }[] = [
-  { label: "fresh", line: "a run of right answers. shiny." },
-  { label: "bruised", line: "the same slip, twice. one soft spot." },
-  { label: "wilting", line: "it keeps happening. the stem droops." },
-  { label: "rotten", line: "flies. drama. one right answer helps." },
+  { label: "happy", line: "a run of right answers. all smiles." },
+  { label: "watchful", line: "a slip. it's keeping an eye on you." },
+  { label: "concerned", line: "the same slip twice. it leans in to help." },
+  { label: "worried", line: "it offers the explain rung. one right answer and it relaxes." },
 ];
 
-/** Poke the tamatar; slide it through its rot states (ui_planning.md §4.2 card 4). */
+/** Poke the tamatar; slide it through its moods, from happy to worried about you. */
 export default function TomatoPlayground() {
   const [s, setS] = useState<TomatoState>(0);
   const [pokes, setPokes] = useState(0);
@@ -48,7 +48,7 @@ export default function TomatoPlayground() {
           value={s}
           onChange={(e) => setS(Number(e.target.value) as TomatoState)}
           className="lp-range w-full"
-          aria-label="how rotten is the tamatar"
+          aria-label="how worried is the tamatar"
         />
         <p className="mt-3 min-h-[2.6em] text-[1rem] text-ink-2" aria-live="polite">
           {STATES[s].line}

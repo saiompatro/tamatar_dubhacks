@@ -5,6 +5,8 @@ import { NextResponse, type NextRequest } from "next/server";
 export function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname;
   if (path === "/api/waitlist" || path === "/api/waitlist/") return NextResponse.next();
+  // The landing page's one live problem (rate-limited, single hardcoded problem).
+  if (path === "/api/try" || path === "/api/try/") return NextResponse.next();
   if (path === "/api" || path.startsWith("/api/")) {
     return NextResponse.json({ error: "Tamatar is coming soon. Join the waitlist for early access." }, { status: 403 });
   }

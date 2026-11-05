@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Topbar from "@/components/Topbar";
 import HelpLadder from "@/components/landing/HelpLadder";
-import HeroDemo from "@/components/landing/HeroDemo";
+import LiveTry from "@/components/landing/LiveTry";
+import PhoneNudge from "@/components/landing/PhoneNudge";
 import Reveal from "@/components/landing/Reveal";
 import TomatoPlayground from "@/components/landing/TomatoPlayground";
 import TomatoRain from "@/components/landing/TomatoRain";
@@ -12,6 +13,12 @@ export const metadata: Metadata = {
   title: "tamatar.si: a notebook that grades you back",
   description: "Write your physics homework by hand. tamatar's red pen circles the first slip and helps just enough for you to fix it yourself.",
 };
+
+const COVERS = [
+  { title: "checks well", tone: "text-good", items: ["ramps and inclined planes", "friction, static and kinetic", "free-body diagrams", "Newton's second law, ma = ΣF"] },
+  { title: "getting there", tone: "text-ink", items: ["kinematics and projectiles", "work and energy", "momentum and impulse", "circular motion"] },
+  { title: "not yet", tone: "text-tomato", items: ["torque and rotation", "electricity and magnetism", "waves, optics, thermo", "anything past intro mechanics"] },
+];
 
 const STEPS = [
   {
@@ -57,9 +64,22 @@ export default function Landing() {
             <br />
             <span className="text-tomato">back.</span>
           </h1>
-          <p className="mt-6 max-w-[500px] text-[1.1rem] leading-snug text-ink-2">
-            Write your work with a Pencil, like it&rsquo;s paper. Circle your answer. tamatar&rsquo;s red pen finds the <span className="hl">first slip</span> and helps just enough for you to fix it yourself.
+          <p className="mt-6 max-w-[520px] text-[1.15rem] leading-snug text-ink">
+            Answer keys teach you to copy. tamatar won&rsquo;t just tell you.
           </p>
+          <p className="mt-2 max-w-[520px] text-[1.05rem] leading-snug text-ink-2">
+            Write your work by hand and circle your answer. The red pen marks your <span className="hl">first slip</span>, then you choose how much more help you need:
+          </p>
+          {/* the help ladder, up top: the reason to care */}
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-[1rem]" aria-label="the help ladder: mark, hint, explain, answer">
+            {["mark", "hint", "explain", "answer"].map((r, i) => (
+              <span key={r} className="flex items-center gap-2">
+                {i > 0 && <span className="text-faint">→</span>}
+                <span className={`rounded-full border-[1.5px] px-3 py-0.5 ${i === 0 ? "border-tomato text-tomato" : "border-rule text-ink-2"}`}>{r}</span>
+              </span>
+            ))}
+            <span className="ml-1 text-[0.85rem] text-muted">and a tally of every rung you climb</span>
+          </div>
           <div className="mt-8 flex flex-wrap items-center gap-5">
             <Link href="/#waitlist" className="btn btn-red wa lp-cta !min-h-[60px] !px-8 !text-[1.35rem]">
               join the waitlist →
@@ -68,19 +88,39 @@ export default function Landing() {
               or see how it works
             </a>
           </div>
-          <div className="mt-10 flex items-center gap-3 text-[0.8rem] text-muted">
-            <svg width="56" height="22" viewBox="0 0 56 22" aria-hidden>
-              <path d="M3 12 Q14 2 26 12 T52 10" fill="none" stroke="var(--tomato)" strokeWidth="2.4" strokeLinecap="round" />
-            </svg>
-            that page is a replay of the real red pen. it loops.
-          </div>
+          <PhoneNudge className="mt-8 max-w-[520px]" />
+          <p className="mt-8 max-w-[520px] text-[0.8rem] leading-snug text-muted">
+            <span className="text-ink-2">Your handwriting:</span> a picture of your page goes to Anthropic&rsquo;s Claude only to be checked. We don&rsquo;t keep the image, and it isn&rsquo;t used to train AI.
+          </p>
         </div>
 
         <div className="relative mx-auto w-full max-w-[600px] lg:mr-0" style={{ rotate: "1.2deg" }}>
           <div className="lp-tape" style={{ left: "12%", rotate: "-8deg" }} aria-hidden />
           <div className="lp-tape" style={{ right: "14%", rotate: "6deg" }} aria-hidden />
-          <HeroDemo />
+          <LiveTry />
         </div>
+      </section>
+
+      {/* scope: say what it covers, so a torque problem isn't a surprise */}
+      <section id="covers" className="relative mx-auto max-w-[1180px] scroll-mt-16 px-4 pb-20 sm:px-10">
+        <Reveal>
+          <SectionHead kicker="what it checks" title="honest about what it knows." />
+        </Reveal>
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
+          {COVERS.map((c, i) => (
+            <Reveal key={c.title} delay={i * 90}>
+              <div className={`card ${["wa", "wb", "wc"][i]} h-full !p-5`}>
+                <div className={`text-[1.25rem] ${c.tone}`}>{c.title}</div>
+                <ul className="mt-2 flex flex-col gap-1 text-[0.95rem] text-ink-2">
+                  {c.items.map((t) => (
+                    <li key={t}>· {t}</li>
+                  ))}
+                </ul>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <p className="mt-4 text-[0.85rem] text-muted">Intro mechanics only, for now. If your problem is on the &lsquo;not yet&rsquo; list, tamatar will probably get it wrong.</p>
       </section>
 
       {/* how it works */}
@@ -129,7 +169,7 @@ export default function Landing() {
           <Reveal>
             <SectionHead kicker="the tamatar" title="meet your tamatar." />
             <p className="mt-4 max-w-[480px] text-[1.05rem] leading-snug text-ink-2">
-              It lives in the corner of every page and watches you write. Right answers keep it fresh. Make the same mistake twice and it starts to rot. One right answer and it perks back up.
+              It lives in the corner of every page and watches you write. Right answers keep it happy. Hit the same slip twice and it gets worried about you: it leans in and offers the explain rung. One right answer and it relaxes.
             </p>
             <p className="mt-4 max-w-[480px] text-[1.05rem] leading-snug text-ink-2">
               Go ahead, poke it. It doesn&rsquo;t mind. Much.
@@ -181,8 +221,9 @@ export default function Landing() {
 
       <footer className="relative mx-auto flex max-w-[1180px] flex-wrap items-center gap-x-6 gap-y-2 px-4 py-10 text-[0.8rem] text-muted sm:px-10">
         <img src="/logo.png" alt="" width={28} height={30} />
-        <span>tamatar.si, made in one night at DubHacks</span>
-        <span className="sm:ml-auto">no tamatars were harmed. some were bruised.</span>
+        <span>tamatar.si</span>
+        <Link href="/team" className="link">meet the team</Link>
+        <span className="sm:ml-auto">no tamatars were harmed. some got a little worried.</span>
       </footer>
     </div>
   );
